@@ -1,0 +1,22 @@
+{
+    "name": "lm/proxy",
+    "type": "server",
+    "description": "HTTP proxy for allowing access to specific servers in network",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Luka",
+            "email": "lukamatosevic5@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.5",
+        "guzzlehttp/guzzle": "^6.2",
+        "monolog/monolog": "1.22.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "lm\\proxy\\": "src/"
+        }
+    }
+}

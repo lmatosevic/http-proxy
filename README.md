@@ -1,0 +1,1 @@
+Run proxy server from /public folder with following command: "php -S 0.0.0.0:8080 route.php"
