@@ -8,7 +8,6 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\MessageFormatter;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Request;
-use GuzzleHttp\Psr7\Response;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
@@ -41,9 +40,8 @@ class Application {
         $body = file_get_contents('php://input');
 
         foreach ($headers as $name => $value) {
-            if ($name == "Host" || $name == "Referer" || $name == "Origin") { //TODO: PROXY to HOST mapping move to new function 
-                $headers[$name] = str_replace(constant("PROXY_HOST") . ":" . constant("PROXY_PORT"),
-                    constant("REDIRECT_HOST") . ":" . constant("REDIRECT_PORT"), $value);
+            if ($name == "Host" || $name == "Referer" || $name == "Origin") {
+                $headers[$name] = $this->convertHeaderFromClientToServer($value);
             }
         }
 
@@ -58,8 +56,7 @@ class Application {
                 $override = false;
             }
             if ($name == "Host" || $name == "Referer" || $name == "Origin") {
-                $header = str_replace(constant("REDIRECT_HOST") . ":" . constant("REDIRECT_PORT"),
-                    constant("PROXY_HOST") . ":" . constant("PROXY_PORT"), $response->getHeaderLine($name));
+                $header = $this->convertHeaderFromServerToClient($response->getHeaderLine($name));
                 header($name . ": " . $header, $override);
             } else {
                 header($name . ": " . $response->getHeaderLine($name), $override);
@@ -67,8 +64,7 @@ class Application {
         }
 
         if ($response->getStatusCode() > 300 && $response->getStatusCode() < 400) {
-            $location = str_replace(constant("REDIRECT_HOST") . ":" . constant("REDIRECT_PORT"),
-                constant("PROXY_HOST") . ":" . constant("PROXY_PORT"), $response->getHeaderLine("Location"));
+            $location = $this->convertHeaderFromServerToClient($response->getHeaderLine("Location"));
             if ($location) {
                 header("Location: " . $location, true, $response->getStatusCode());
             }
@@ -83,5 +79,15 @@ class Application {
         $response = $this->httpClient->send($request, ['allow_redirects' => false]);
 
         return $response;
+    }
+
+    private function convertHeaderFromClientToServer($header) {
+        return str_replace(constant("PROXY_HOST") . ":" . constant("PROXY_PORT"),
+            constant("REDIRECT_HOST") . ":" . constant("REDIRECT_PORT"), $header);
+    }
+
+    private function convertHeaderFromServerToClient($header) {
+        return str_replace(constant("REDIRECT_HOST") . ":" . constant("REDIRECT_PORT"),
+            constant("PROXY_HOST") . ":" . constant("PROXY_PORT"), $header);
     }
 }
