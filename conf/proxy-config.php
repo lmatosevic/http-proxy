@@ -2,6 +2,10 @@
 
 namespace lm\proxy;
 
+define('PROXY_HOST', 'localhost');
+
+define('PROXY_PORT', '8080');
+
 define('REDIRECT_HOST', 'localhost');
 
 define('REDIRECT_SCHEMA', 'http');

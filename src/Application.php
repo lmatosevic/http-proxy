@@ -40,40 +40,39 @@ class Application {
         $headers = getallheaders();
         $body = file_get_contents('php://input');
 
-        $response = $this->doHttpRequest($method, $uri, $headers, $body);
-
-        if ($response->getStatusCode() > 300) {
-//            $code = $response->getStatusCode();
-//            $resp = new Response(404, ["Location" => $response->getHeader("Location")[0], "Cookie" => $response->getHeader("Cookie")], "<h1>Page not found</h1>");
-//            $counter = 1;
-//            while ($code > 300) {
-//                $this->logger->debug("Received redirect response " . $counter);
-//                $uri_array = parse_url($resp->getHeader("Location")[0]);
-//                $redirect_uri = constant("REDIRECT_SCHEMA") . '://' . constant("REDIRECT_HOST") . ':' . constant("REDIRECT_PORT") . $uri_array["path"];
-//                if (isset($uri_array["query"])) {
-//                    $redirect_uri .= "?" . $uri_array["query"];
-//                }
-//                if (isset($uri_array["fragment"])) {
-//                    $redirect_uri .= "#" . $uri_array["fragment"];
-//                }
-//                $this->logger->debug("Creating new request to " . $redirect_uri);
-//                $resp = $this->doHttpRequest("GET", $redirect_uri, $resp->getHeader("Cookie"));
-//                $this->logger->debug("Received new response " . $resp->getStatusCode() . " " . print_r($resp->getHeaders(), true));
-//                $code = $resp->getStatusCode();
-//                $counter++;
-//            }
-//            $response = $resp;
-
-//            $this->logger->debug("REDIRECTED | RESPONSE:  " . print_r($response->getHeaders(), true));
-//
-//            header("Location: " . $response->getHeader("Location")[0]);
-//            header("Set-Cookie: " . $response->getHeader("Set-Cookie")[0]);
-//            header("Expires:" . $response->getHeader("Expires")[0]);
-//            header("Keep-Alive:" . $response->getHeader("Keep-Alive")[0]);
-//            header("Connection: " . $response->getHeader("Connection")[0]);
+        foreach ($headers as $name => $value) {
+            if ($name == "Host" || $name == "Referer" || $name == "Origin") { //TODO: PROXY to HOST mapping move to new function 
+                $headers[$name] = str_replace(constant("PROXY_HOST") . ":" . constant("PROXY_PORT"),
+                    constant("REDIRECT_HOST") . ":" . constant("REDIRECT_PORT"), $value);
+            }
         }
 
-        header("Content-type: " . $response->getHeader("Content-type")[0]);
+        $response = $this->doHttpRequest($method, $uri, $headers, $body);
+
+        foreach ($response->getHeaders() as $name => $value) {
+            if ($name == "Transfer-Encoding") {
+                continue;
+            }
+            $override = true;
+            if ($name == "Set-Cookie") {
+                $override = false;
+            }
+            if ($name == "Host" || $name == "Referer" || $name == "Origin") {
+                $header = str_replace(constant("REDIRECT_HOST") . ":" . constant("REDIRECT_PORT"),
+                    constant("PROXY_HOST") . ":" . constant("PROXY_PORT"), $response->getHeaderLine($name));
+                header($name . ": " . $header, $override);
+            } else {
+                header($name . ": " . $response->getHeaderLine($name), $override);
+            }
+        }
+
+        if ($response->getStatusCode() > 300 && $response->getStatusCode() < 400) {
+            $location = str_replace(constant("REDIRECT_HOST") . ":" . constant("REDIRECT_PORT"),
+                constant("PROXY_HOST") . ":" . constant("PROXY_PORT"), $response->getHeaderLine("Location"));
+            if ($location) {
+                header("Location: " . $location, true, $response->getStatusCode());
+            }
+        }
 
         echo $response->getBody();
     }
